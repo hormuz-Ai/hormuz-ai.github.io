@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hormuz AI - Free Audit</title>
+  <style>
+    body{font-family:system-ui,sans-serif;max-width:640px;margin:20px auto;padding:20px;line-height:1.5;background:#0a0a0a;color:#fff;}
+    input, button{font-size:16px;padding:12px;width:100%;margin:10px 0;border-radius:8px;}
+    button{background:#00ff00;color:#000;font-weight:bold;}
+    #result{margin-top:20px;padding:20px;background:#111;border-radius:8px;}
+    a{color:#00ff00;text-decoration:underline;}
+    .fix-btn{background:#00ff00;color:#000;padding:10px 20px;border-radius:6px;display:inline-block;margin-top:10px;font-weight:bold;}
+  </style>
+</head>
+<body>
+  <h1>Free AI Visibility Audit</h1>
+  <p>Paste your Shopify store URL</p>
+  <input id="url" type="text" placeholder="https://yourstore.myshopify.com" value="">
+  <button onclick="runAudit()">Run Audit • 30 seconds</button>
+  
+  <div id="result"></div>
+
+  <script>
+    const CORS_PROXY = "https://corsproxy.io/?";
+
+    async function runAudit() {
+      let url = document.getElementById('url').value.trim();
+      if (!url) return alert("Paste your store URL");
+      if (!url.startsWith("http")) url = "https://" + url;
+      if (url.endsWith("/")) url = url.slice(0, -1);
+
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = "<p>Scanning your store...</p>";
+
+      try {
+        const robotsRes = await fetch(CORS_PROXY + encodeURIComponent(url + "/robots.txt"));
+        const robotsOK = robotsRes.ok && (await robotsRes.text()).length > 10;
+
+        const productsRes = await fetch(CORS_PROXY + encodeURIComponent(url + "/products.json?limit=1"));
+        const productsOK = productsRes.ok;
+
+        const homeRes = await fetch(CORS_PROXY + encodeURIComponent(url));
+        const html = await homeRes.text();
+        const jsonldOK = html.includes('application/ld+json') && html.includes('"@type":"Product"');
+
+        let score = 0;
+        if (robotsOK) score += 30;
+        if (productsOK) score += 40;
+        if (jsonldOK) score += 30;
+
+        let report = `<h2>Audit Result • Score ${score}/100</h2>`;
+
+        if (score >= 70) {
+          report += `<p style="color:#00ff00">Almost AI-ready. Small fixes needed.</p>`;
+        } else {
+          report += `<p style="color:#ff0000">Your store is currently invisible to ChatGPT, Claude & Perplexity.</p>`;
+        }
+
+        report += `<ul>
+          <li>robots.txt: ${robotsOK ? "✅ Good" : "❌ Missing or blocking AI crawlers"}</li>
+          <li>Product feed: ${productsOK ? "✅ Public" : "❌ Not public"}</li>
+          <li>JSON-LD structured data: ${jsonldOK ? "✅ Present" : "❌ Missing"}</li>
+        </ul>`;
+
+        report += `<h3>Fix files (download now):</h3>
+          <a href="data:text/plain;charset=utf-8,User-agent:%20*%0ADisallow:%20%0A%0ASitemap:%20${url}/sitemap_products_1.xml" download="robots.txt">Download fixed robots.txt</a><br><br>`;
+
+        // Professional next step
+        report += `<p><strong>Next step (takes 2 minutes):</strong><br>
+        1. Download & upload the robots.txt above.<br>
+        2. For the other issues, tap the button below and send me your audit on WhatsApp.<br>
+        I will reply immediately with exact copy-paste instructions for your store (no code needed if you prefer apps).</p>`;
+
+        report += `<a href="https://wa.me/27731945176?text=Hi%20Hormuz%20AI%2C%20I%20ran%20the%20free%20audit.%20Store%3A%20\( {encodeURIComponent(url)}%0AScore%3A%20 \){score}%2F100%0AIssues%3A%20robots.txt%3A%20\( {robotsOK ? 'Good' : 'Bad'}%2C%20Product%20feed%3A%20 \){productsOK ? 'Good' : 'Bad'}%2C%20JSON-LD%3A%20${jsonldOK ? 'Good' : 'Bad'}%0APlease%20send%20me%20the%20fix%20instructions." class="fix-btn">Send my audit to WhatsApp for full fix guide</a>`;
+
+        resultDiv.innerHTML = report;
+      } catch(e) {
+        resultDiv.innerHTML = `<p style="color:#ff0000">Could not reach store. Send the URL on WhatsApp for manual audit.</p>`;
+      }
+    }
+  </script>
+</body>
+  </html>
